@@ -2,6 +2,7 @@ import discord
 import os
 from replit import db
 from random import randint
+import time
 
 rows = 17
 columns = 36
@@ -14,6 +15,7 @@ def add(coords, direction):
 
 
 def visualize():
+  print(time.time())
   currMap = ""
   for i in range(rows):
     for j in range(columns):
@@ -23,6 +25,7 @@ def visualize():
       else:
         currMap += "┼"
     currMap += "\n"
+  print(time.time())
   return currMap
 
 
@@ -104,14 +107,13 @@ async def on_message(message):
       db["game_values"]["started"] = True
       # Put all the players into random locations
       db["game_values"]["coord_player"] = {}
-      print(db["game_values"]["coord_player"])
-      print(type(db["game_values"]["coord_player"]))
       for user in db["users"].value:
         start_coords = str(randint(0, 16)) + " " + str(randint(0,35))
         while start_coords in db["game_values"]["coord_player"]:
           start_coords = str(randint(0, 16)) + " " + str(randint(0,35))
         db["game_values"]["coord_player"][start_coords] = user
-        db[user]["location"] = list(start_coords.split(" "))
+        coords_list = list(start_coords.split(" "))
+        db[user]["location"] = int(coords_list[0]), int(coords_list[1])
       # Visualize
       msg += "\n" + visualize()
       # Start First Round
@@ -159,9 +161,9 @@ async def on_message(message):
         direction = (int(msg_list[2]), 0)
       #TODO: CHECK IF OUT OF BOUNDS OR IF USED BY OTHER PLAYER
       coords = db[str(message.author)]["location"]
-      del db["game_values"]["coord_player"][str(coords[0] + " " + str(coords[1])]
+      del db["game_values"]["coord_player"][str(coords[0]) + " " + str(coords[1])]
       newCoords = add(coords, direction)
-      db["game_values"]["coord_player"][str(newCoords[0]) " " + str(newCoords[1])] = str(message.author)
+      db["game_values"]["coord_player"][str(newCoords[0]) + " " + str(newCoords[1])] = str(message.author)
       db[str(message.author)]["location"] = newCoords
       # Visualize
       msg = visualize()
