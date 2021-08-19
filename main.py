@@ -8,7 +8,8 @@ client = discord.Client()
 @client.event
 async def on_ready():
   print("I'm ready. Logged in as {0.user}".format(client))
-  db["game_values"] = {"created": False}
+  db.clear()
+  db["game_values"] = {"created": False, "wantingToEndGame": False, "usersWantingToEndgame": []}
 
 @client.event
 async def on_message(message):
@@ -42,7 +43,7 @@ async def on_message(message):
         msg = "You have already joined the game"
       else:
         db["users"].append(newPlayer)
-        db[newPlayer] = {}
+        db[newPlayer] = {"icon": newPlayer[0]}
         msg = "{0} joined the game. Add a emoji for your user by typing /icon <emoji>".format(message.author)
     await message.channel.send(msg)
 
@@ -50,9 +51,9 @@ async def on_message(message):
     if (not db["game_values"]["created"]):
       msg = "Sorry, but you must create a game before checking the playerList."
     else:
-      msg = "Current Players: \n"
+      msg = "Current Players (icon - playerName): \n"
       for player in db["users"].value:
-        msg += str(db[player]["icon"] + " " + player + "\n")
+        msg += str(db[player]["icon"] + " - " + player + "\n")
     await message.channel.send(msg)
 
   if message.content.startswith("/icon"):
@@ -62,14 +63,14 @@ async def on_message(message):
       msg = "Sorry, but you cannot change your icon as the game has already started"
     elif str(message.author) not in db["users"].value:
       msg = "Sorry, but you must join the game before changing your icon."
-    msg_list = list(message.content.split(" "))
-    if len(msg_list) != 2:
-      msg = "bad command. Need one argument /icon <emoji>"
     else:
-      icon = msg_list[1]
-      db[str(message.author)]["icon"] = icon
-      msg = "Your new icon is " + icon
-
+      msg_list = list(message.content.split(" "))
+      if len(msg_list) != 2:
+        msg = "bad command. Need one argument /icon <emoji>"
+      else:
+        icon = msg_list[1]
+        db[str(message.author)]["icon"] = icon
+        msg = "Your new icon is " + icon
     await message.channel.send(msg)
 
   if message.content == "/start":
@@ -77,9 +78,32 @@ async def on_message(message):
       msg = "Sorry, but you must create a game before starting a game."
     elif (db["game_values"]["started"]):
       msg = "Sorry, but you cannot start a game as one has already started."
-    msg = "The game is starting."
+    else:
+      msg = "The game is starting."
+      db["game_values"]["started"] = True
     await message.channel.send(msg)
 
+  if message.content == "/endGame":
+    if (not db["game_values"]["created"]):
+      msg = "Sorry, but you must create a game before ending a game."
+    elif (not db["game_values"]["started"]):
+      db.clear()
+      db["game_values"] = {"created": False, "wantingToEndGame": False, "usersWantingToEndgame": []}
+      msg = "Successfully ended the game"
+    else:
+      msg = "Are you sure you want to end the game? All the progress for everyone will be lost. At least two people must respond with \"yes\" for the game to end. If someone types \"no\" the game will continue."
+      db["game_values"]["wantingToEndGame"] = True
+    await message.channel.send(msg)
+  
+  if message.content == "yes" and db["game_values"]["wantingToEndGame"]:
+    if str(message.author) not in db["game_values"]["usersWantingToEndgame"].value:
+      db["game_values"]["usersWantingToEndgame"].append(str(message.author))
+    if len(db["game_values"]["usersWantingToEndgame"]) == 2:
+      db.clear()
+      db["game_values"] = {"created": False, "wantingToEndGame": False, "usersWantingToEndgame": []}
+      msg = "Successfully ended the game"
+
+  
 
 bot_token = os.environ['bot_token']
 client.run(bot_token)
