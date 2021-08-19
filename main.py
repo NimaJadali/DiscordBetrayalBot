@@ -3,6 +3,7 @@ import os
 from replit import db
 from random import randint
 import time
+import numpy as np
 
 rows = 17
 columns = 36
@@ -16,17 +17,25 @@ def add(coords, direction):
 
 def visualize():
   print(time.time())
-  currMap = ""
-  for i in range(rows):
-    for j in range(columns):
-      if (str(i) + " " + str(j) in db["game_values"]["coord_player"]):
-        player = db["game_values"]["coord_player"][str(i) + " " + str(j)]
-        currMap += db[player]["icon"]
-      else:
-        currMap += "┼"
-    currMap += "\n"
+  currMap = np.full((rows, columns), "+ ")
+  for key in db["game_values"]["coord_player"]:
+    coords = list(key.split(" "))
+    player = db["game_values"]["coord_player"][key]
+    if (db[player]["id"] < 10):
+      currMap[int(coords[0]), int(coords[1])] = db[player]["id"] + " "
+    else:
+      currMap[int(coords[0]), int(coords[1])] = db[player]["id"]
+  currMap = np.concatenate((currMap, np.full((rows,1),"\n ")), axis=1)
   print(time.time())
-  return currMap
+  print(currMap)
+  currMapStr = currMap.astype('|S2').tobytes().decode('UTF-8')
+  for key in db["game_values"]["coord_player"]:
+    player = db["game_values"]["coord_player"][key]
+    if (db[player]["id"] < 10):
+      currMapStr.replace(db[player]["id"] + " ", db[player]["icon"] + " ")
+    else:
+      currMapStr.replace(db[player]["id"], db[player]["icon"] + " ")
+  return currMapStr
 
 
 @client.event
@@ -52,6 +61,7 @@ async def on_message(message):
   if message.content == "/createGame":
     db["game_values"]["started"] = False
     db["game_values"]["created"] = True
+    db["game_values"]["player_count"] = 0
     db["users"] = []
     msg = "Created a game. You need at least three players to start. To join the game type the command /join"
     await message.channel.send(msg)
@@ -67,7 +77,8 @@ async def on_message(message):
         msg = "You have already joined the game"
       else:
         db["users"].append(newPlayer)
-        db[newPlayer] = {"icon": newPlayer[0]}
+        db["game_values"]["player_count"] += 1
+        db[newPlayer] = {"icon": newPlayer[0], 'id': db["game_values"]["player_count"]}
         msg = "{0} joined the game. Add a emoji for your user by typing /icon <emoji>".format(message.author)
     await message.channel.send(msg)
 
@@ -102,15 +113,17 @@ async def on_message(message):
       msg = "Sorry, but you must create a game before starting a game."
     elif (db["game_values"]["started"]):
       msg = "Sorry, but you cannot start a game as one has already started."
+    elif (db["game_values"]["player_count"] < 1):
+      msg = "Sorry, but you need more players to start the game."
     else:
       msg = "The game is starting."
       db["game_values"]["started"] = True
       # Put all the players into random locations
       db["game_values"]["coord_player"] = {}
       for user in db["users"].value:
-        start_coords = str(randint(0, 16)) + " " + str(randint(0,35))
+        start_coords = str(randint(0, rows-1)) + " " + str(randint(0,columns-1))
         while start_coords in db["game_values"]["coord_player"]:
-          start_coords = str(randint(0, 16)) + " " + str(randint(0,35))
+          start_coords = str(randint(0, rows-1)) + " " + str(randint(0,columns-1))
         db["game_values"]["coord_player"][start_coords] = user
         coords_list = list(start_coords.split(" "))
         db[user]["location"] = int(coords_list[0]), int(coords_list[1])
