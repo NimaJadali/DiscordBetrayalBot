@@ -5,8 +5,8 @@ from random import randint
 import time
 import numpy as np
 
-rows = 17
-columns = 36
+rows = 20
+columns = 23
 
 client = discord.Client()
 
@@ -17,25 +17,26 @@ def add(coords, direction):
 
 def visualize():
   print(time.time())
-  currMap = np.full((rows, columns), "+ ")
+  currMap = np.full((rows, columns), "+   ")
   for key in db["game_values"]["coord_player"]:
     coords = list(key.split(" "))
     player = db["game_values"]["coord_player"][key]
     if (db[player]["id"] < 10):
-      currMap[int(coords[0]), int(coords[1])] = db[player]["id"] + " "
+      currMap[int(coords[0]), int(coords[1])] = str(db[player]["id"]) + "   "
     else:
-      currMap[int(coords[0]), int(coords[1])] = db[player]["id"]
-  currMap = np.concatenate((currMap, np.full((rows,1),"\n ")), axis=1)
+      currMap[int(coords[0]), int(coords[1])] = str(db[player]["id"] + "  ")
+  currMap = np.concatenate((currMap, np.full((rows,1)," \n  ")), axis=1)
   print(time.time())
   print(currMap)
-  currMapStr = currMap.astype('|S2').tobytes().decode('UTF-8')
+  currMapStr = "  " + currMap.astype('|S4').tobytes().decode('UTF-8')
   for key in db["game_values"]["coord_player"]:
     player = db["game_values"]["coord_player"][key]
     if (db[player]["id"] < 10):
-      currMapStr.replace(db[player]["id"] + " ", db[player]["icon"] + " ")
+      currMapStr = currMapStr.replace("  " + str(db[player]["id"]) + "  ", db[player]["icon"])
     else:
-      currMapStr.replace(db[player]["id"], db[player]["icon"] + " ")
-  return currMapStr
+      currMapStr = currMapStr.replace("  " + str(db[player]["id"]) + " ", db[player]["icon"])
+  print(len(currMapStr))
+  return ". " + currMapStr[2:]
 
 
 @client.event
@@ -77,8 +78,8 @@ async def on_message(message):
         msg = "You have already joined the game"
       else:
         db["users"].append(newPlayer)
-        db["game_values"]["player_count"] += 1
         db[newPlayer] = {"icon": newPlayer[0], 'id': db["game_values"]["player_count"]}
+        db["game_values"]["player_count"] += 1
         msg = "{0} joined the game. Add a emoji for your user by typing /icon <emoji>".format(message.author)
     await message.channel.send(msg)
 
@@ -130,6 +131,7 @@ async def on_message(message):
       # Visualize
       msg += "\n" + visualize()
       # Start First Round
+      print(len(msg))
     await message.channel.send(msg)
 
   if message.content == "/endGame":
