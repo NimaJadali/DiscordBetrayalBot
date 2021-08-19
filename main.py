@@ -78,7 +78,7 @@ async def on_message(message):
         msg = "You have already joined the game"
       else:
         db["users"].append(newPlayer)
-        db[newPlayer] = {"icon": newPlayer[0], 'id': db["game_values"]["player_count"]}
+        db[newPlayer] = {"icon": newPlayer[0], 'id': db["game_values"]["player_count"], "health": 3, "defense": 0}
         db["game_values"]["player_count"] += 1
         msg = "{0} joined the game. Add a emoji for your user by typing /icon <emoji>".format(message.author)
     await message.channel.send(msg)
@@ -88,8 +88,13 @@ async def on_message(message):
       msg = "Sorry, but you must create a game before checking the playerList."
     else:
       msg = "Current Players (icon - playerName): \n"
-      for player in db["users"].value:
-        msg += str(db[player]["icon"]) + " - " + player + "\n"
+      if db["game_values"]["started"]:
+        for player in db["users"].value:
+          msg += str(db[player]["icon"]) + " - " + player + " - " + str(db[player]["location"]) + " - " + str(db[player]["health"]) + " - " + str(db[player]["defense"]) + "\n"
+      else:
+        for player in db["users"].value:
+          msg += str(db[player]["icon"]) + " - " + player + "\n"
+      
     await message.channel.send(msg)
 
   if message.content.startswith("/icon"):
@@ -154,36 +159,98 @@ async def on_message(message):
       db["game_values"] = {"created": False, "wantingToEndGame": False, "usersWantingToEndgame": []}
       msg = "Successfully ended the game"
 
+  #TODO: subtract mana for movement
   if message.content.startswith("/move"):
+    msg_list = list(message.content.split(" "))
+    # Check the arguments 
+    if len(msg_list) != 3:
+      msg = "bad command. Need two argument /move <direction> <distance>. Directions are left, right, up, and down."
+      fail = True
+    try:
+      dist = int(msg_list[2])
+      fail = False
+    except:
+      msg = "Enter an integer for the move distance"
+      fail = True
+
+
     if (not db["game_values"]["created"]):
       msg = "Sorry, but you must create a game before doing this action."
     elif (not db["game_values"]["started"]):
       msg = "Sorry, but you must start a game before doing this action."
     elif str(message.author) not in db["users"].value:
       msg = "Sorry, but you must have joined the game before it started to do this action."
-    else:
-      msg_list = list(message.content.split(" "))
-      if len(msg_list) != 3:
-        msg = "bad command. Need two argument /move <direction> <distance>. Directions are left, right, up, and down."
+    elif not fail:
       # Update Player Location
       if msg_list[1] == "left":
-        direction = (0, -int(msg_list[2]))
+        direction = (0, -dist)
       elif msg_list[1] == "right":
-        direction = (0, int(msg_list[2]))
+        direction = (0, dist)
       elif msg_list[1] == "up":
-        direction = (-int(msg_list[2]), 0)
+        direction = (-dist, 0)
       elif msg_list[1] == "down":
-        direction = (int(msg_list[2]), 0)
+        direction = (dist, 0)
+      else:
+        msg = "invalid direction"
+        await message.channel.send(msg)
+        return
       #TODO: CHECK IF OUT OF BOUNDS OR IF USED BY OTHER PLAYER
       coords = db[str(message.author)]["location"]
-      del db["game_values"]["coord_player"][str(coords[0]) + " " + str(coords[1])]
       newCoords = add(coords, direction)
-      db["game_values"]["coord_player"][str(newCoords[0]) + " " + str(newCoords[1])] = str(message.author)
-      db[str(message.author)]["location"] = newCoords
-      # Visualize
-      msg = visualize()
+      if newCoords[0] < 0 or newCoords[1] < 0 or newCoords[0] > rows - 1 or newCoords[1] > columns - 1:
+        msg = "Cannot move out of bounds"
+      elif str(newCoords[0]) + " " + str(newCoords[1]) in db["game_values"]["coord_player"]:
+        msg = "Cannot move to where a player already exists"
+      else:
+        del db["game_values"]["coord_player"][str(coords[0]) + " " + str(coords[1])]
+        db["game_values"]["coord_player"][str(newCoords[0]) + " " + str(newCoords[1])] = str(message.author)
+        db[str(message.author)]["location"] = newCoords
+        # Visualize
+        msg = visualize()
       # 
     await message.channel.send(msg)
+
+  #TODO: subtract mana for movement
+  if message.content.startswith("/attack"):
+    msg_list = list(message.content.split(" "))
+    # Check the arguments 
+    if len(msg_list) != 3:
+      msg = "bad command. Need two argument /attack <player> <damage>. user /playerList for list of players."
+      fail = True
+    try:
+      damage = int(msg_list[2])
+      fail = False
+    except:
+      msg = "Enter an integer for the move distance"
+      fail = True
+
+    if (not db["game_values"]["created"]):
+      msg = "Sorry, but you must create a game before doing this action."
+    elif (not db["game_values"]["started"]):
+      msg = "Sorry, but you must start a game before doing this action."
+    elif str(message.author) not in db["users"].value:
+      msg = "Sorry, but you must have joined the game before it started to do this action."
+    elif msg_list[1] not in db["users"].value:
+      msg = "Please enter a valid player name to attack. Type /playerList for all the available players"
+    elif not fail:
+      db[msg_list[1]]["health"] -= damage
+      msg = "Attacked " + msg_list[1]
+    await message.channel.send(msg)
+
+
+
+  if message.content == "/map":
+    if (not db["game_values"]["created"]):
+      msg = "Sorry, but you must create a game before doing this action."
+    elif (not db["game_values"]["started"]):
+      msg = "Sorry, but you must start a game before doing this action."
+    else:
+      msg = visualize()
+      await message.channel.send(msg)
+
+  if message.content.startswith("/echo"):
+    print(message.content)
+    await message.channel.send(message.content)
 
 bot_token = os.environ['bot_token']
 client.run(bot_token)
