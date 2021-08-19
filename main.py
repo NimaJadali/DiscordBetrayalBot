@@ -1,6 +1,7 @@
 import discord
 import os
 from replit import db
+from random import randint
 
 rows = 17
 columns = 36
@@ -12,12 +13,13 @@ def add(coords, direction):
   return coords[0] + direction[0], coords[1] + direction[1]
 
 
-def visualize(temp):
+def visualize():
   currMap = ""
   for i in range(rows):
     for j in range(columns):
-      if (i == temp[0] and j == temp[1]):
-        currMap += "0"
+      if (str(i) + " " + str(j) in db["game_values"]["coord_player"]):
+        player = db["game_values"]["coord_player"][str(i) + " " + str(j)]
+        currMap += db[player]["icon"]
       else:
         currMap += "┼"
     currMap += "\n"
@@ -72,7 +74,7 @@ async def on_message(message):
     else:
       msg = "Current Players (icon - playerName): \n"
       for player in db["users"].value:
-        msg += str(db[player]["icon"] + " - " + player + "\n")
+        msg += str(db[player]["icon"]) + " - " + player + "\n"
     await message.channel.send(msg)
 
   if message.content.startswith("/icon"):
@@ -101,10 +103,17 @@ async def on_message(message):
       msg = "The game is starting."
       db["game_values"]["started"] = True
       # Put all the players into random locations
+      db["game_values"]["coord_player"] = {}
+      print(db["game_values"]["coord_player"])
+      print(type(db["game_values"]["coord_player"]))
       for user in db["users"].value:
-        db[user]["location"] = (8, 18)
+        start_coords = str(randint(0, 16)) + " " + str(randint(0,35))
+        while start_coords in db["game_values"]["coord_player"]:
+          start_coords = str(randint(0, 16)) + " " + str(randint(0,35))
+        db["game_values"]["coord_player"][start_coords] = user
+        db[user]["location"] = list(start_coords.split(" "))
       # Visualize
-      msg += "\n" + visualize(db[user]["location"])
+      msg += "\n" + visualize()
       # Start First Round
     await message.channel.send(msg)
 
@@ -148,9 +157,14 @@ async def on_message(message):
         direction = (-int(msg_list[2]), 0)
       elif msg_list[1] == "down":
         direction = (int(msg_list[2]), 0)
-      db[str(message.author)]["location"] = add(db[str(message.author)]["location"], direction)
+      #TODO: CHECK IF OUT OF BOUNDS OR IF USED BY OTHER PLAYER
+      coords = db[str(message.author)]["location"]
+      del db["game_values"]["coord_player"][str(coords[0] + " " + str(coords[1])]
+      newCoords = add(coords, direction)
+      db["game_values"]["coord_player"][str(newCoords[0]) " " + str(newCoords[1])] = str(message.author)
+      db[str(message.author)]["location"] = newCoords
       # Visualize
-      msg = visualize(db[str(message.author)]["location"].value)
+      msg = visualize()
       # 
     await message.channel.send(msg)
 
