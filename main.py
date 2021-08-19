@@ -2,6 +2,8 @@ import discord
 import os
 from replit import db
 
+rows = 17
+columns = 36
 
 client = discord.Client()
 
@@ -81,6 +83,12 @@ async def on_message(message):
     else:
       msg = "The game is starting."
       db["game_values"]["started"] = True
+      # Put all the players into random locations
+      for user in db["users"].value:
+        db[user]["location"] = (8, 18)
+      # Visualize
+      visualize()
+      # Start First Round
     await message.channel.send(msg)
 
   if message.content == "/endGame":
@@ -103,7 +111,47 @@ async def on_message(message):
       db["game_values"] = {"created": False, "wantingToEndGame": False, "usersWantingToEndgame": []}
       msg = "Successfully ended the game"
 
-  
+  if message.content.startswith("/move"):
+    if (not db["game_values"]["created"]):
+      msg = "Sorry, but you must create a game before doing this action."
+    elif (not db["game_values"]["started"]):
+      msg = "Sorry, but you must start a game before doing this action."
+    elif str(message.author) not in db["users"].value:
+      msg = "Sorry, but you must have joined the game before it started to do this action."
+    else:
+      msg_list = list(message.content.split(" "))
+      if len(msg_list) != 3:
+        msg = "bad command. Need two argument /move <direction> <distance>. Directions are left, right, up, and down."
+      print(db[str(message.author)]["location"])
+      # Update Player Location
+      if msg_list[1] == "left":
+        direction = (0, -int(msg_list[2]))
+      elif msg_list[1] == "right":
+        direction = (0, int(msg_list[2]))
+      elif msg_list[1] == "up":
+        direction = (-int(msg_list[2]), 0)
+      elif msg_list[1] == "down":
+        direction = (int(msg_list[2]), 0)
+      db[str(message.author)]["location"] = add(db[str(message.author)]["location"], direction)
+      print(db[str(message.author)]["location"])
+      # Visualize
+      msg = visualize(db[str(message.author)]["location"])
+      # 
+    await message.channel.send(msg)
 
 bot_token = os.environ['bot_token']
 client.run(bot_token)
+
+def add(coords, direction):
+  return coords[0] + direction[0], coords[1] + direction[1]
+
+def visualize(temp):
+  currMap = ""
+  for i in range(rows):
+    for j in range(columns):
+      if (i,j) == temp:
+        "0"
+      else:
+        currMap += "┼"
+    currMap += "\n"
+  return currMap
