@@ -37,8 +37,9 @@ def visualize():
       currMapStr = currMapStr.replace("  " + str(db[player]["id"]) + " ", db[player]["icon"])
   return ". " + currMapStr[2:]
 
+
 def visualize_range():
-  currMap = np.full((rows, columns), "+   ")
+  currMap = np.full((rows, columns), "o   ")
   for key in db["game_values"]["coord_player"]:
     coords = list(key.split(" "))
     player = db["game_values"]["coord_player"][key]
@@ -46,7 +47,24 @@ def visualize_range():
       currMap[int(coords[0]), int(coords[1])] = str(db[player]["id"]) + "   "
     else:
       currMap[int(coords[0]), int(coords[1])] = str(db[player]["id"] + "  ")
-      
+  # Add trade range symbols
+  for key in db["game_values"]["coord_player"]:
+    coords = list(key.split(" "))
+    for i in range(-tradeRange, tradeRange + 1):
+      for j in range(-tradeRange, tradeRange + 1):
+        if int(coords[0]) + i < 0 or  int(coords[1]) + j < 0 or int(coords[0]) + i >= rows or  int(coords[1]) + j >= columns:
+          continue
+        elif abs(i) + abs(j) <= tradeRange and currMap[int(coords[0]) + i, int(coords[1]) + j] == "o   ":
+          currMap[int(coords[0]) + i, int(coords[1]) + j] = "u   "
+  # Add range symbols
+  for key in db["game_values"]["coord_player"]:
+    for i in range(-attackRange, attackRange + 1):
+      for j in range(-attackRange, attackRange + 1):
+        if int(coords[0]) + i < 0 or  int(coords[1]) + j < 0 or int(coords[0]) + i >= rows or  int(coords[1]) + j >= columns:
+          continue
+        elif abs(i) + abs(j) <= attackRange and (currMap[int(coords[0]) + i, int(coords[1]) + j] == "o   " or currMap[int(coords[0]) + i, int(coords[1]) + j] == "u   "):
+          currMap[int(coords[0]) + i, int(coords[1]) + j] = "p   "
+
   currMap = np.concatenate((currMap, np.full((rows,1)," \n  ")), axis=1)
   currMapStr = "  " + currMap.astype('|S4').tobytes().decode('UTF-8')
   for key in db["game_values"]["coord_player"]:
@@ -56,6 +74,7 @@ def visualize_range():
     else:
       currMapStr = currMapStr.replace("  " + str(db[player]["id"]) + " ", db[player]["icon"])
   return ". " + currMapStr[2:]
+
 
 def playerInfo():
   msg = ""
