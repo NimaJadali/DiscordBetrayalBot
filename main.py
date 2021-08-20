@@ -49,15 +49,15 @@ async def roundLoop():
   if db["game_values"]["game_time"] % round_time == 0:
     for player in db["user_username"]:
       db[player]["mana"] += 5
-    channel = client.get_channel(878117760910131200)
+    channel = client.get_channel(877709586403033123)
     await channel.send("New Round!")
   db["game_values"]["game_time"] += 1
 
 
 @client.event
 async def on_ready():
-  print("I'm ready. Logged in as {0.user}".format(client))
   db.clear()
+  print("I'm ready. Logged in as {0.user}".format(client))
   db["game_values"] = {"created": False, "wantingToEndGame": False, "usersWantingToEndgame": []}
 
 
@@ -313,7 +313,7 @@ async def on_message(message):
               db.clear()
               db["game_values"] = {"created": False, "wantingToEndGame": False, "usersWantingToEndgame": []}
             elif (db["game_values"]["player_count"] == 0):
-              msg = username + " won, but at what cost?"
+              msg = username + " won, but at what cost"
               await message.channel.send(msg)
               db.clear()
               db["game_values"] = {"created": False, "wantingToEndGame": False, "usersWantingToEndgame": []}
