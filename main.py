@@ -7,7 +7,8 @@ import numpy as np
 
 rows = 20
 columns = 23
-
+attackRange = 4
+tradeRange = 8
 client = discord.Client()
 
 
@@ -16,7 +17,6 @@ def add(coords, direction):
 
 
 def visualize():
-  print(time.time())
   currMap = np.full((rows, columns), "+   ")
   for key in db["game_values"]["coord_player"]:
     coords = list(key.split(" "))
@@ -26,8 +26,6 @@ def visualize():
     else:
       currMap[int(coords[0]), int(coords[1])] = str(db[player]["id"] + "  ")
   currMap = np.concatenate((currMap, np.full((rows,1)," \n  ")), axis=1)
-  print(time.time())
-  print(currMap)
   currMapStr = "  " + currMap.astype('|S4').tobytes().decode('UTF-8')
   for key in db["game_values"]["coord_player"]:
     player = db["game_values"]["coord_player"][key]
@@ -35,7 +33,6 @@ def visualize():
       currMapStr = currMapStr.replace("  " + str(db[player]["id"]) + "  ", db[player]["icon"])
     else:
       currMapStr = currMapStr.replace("  " + str(db[player]["id"]) + " ", db[player]["icon"])
-  print(len(currMapStr))
   return ". " + currMapStr[2:]
 
 
@@ -52,11 +49,11 @@ async def on_message(message):
     return
 
   if message.content == "/help":
-    msg = "This is a game test. For rules run /rules. To create a game run /createGame. To join the game type /join. To add an icon type /icon <emoji>. To start the game type /start."
+    msg = "This is a game test. \n/rules shows the game rules. \n/createGame instantiates a game. \n/join to join the game type. \n/playerList gets the list of all the players. \n/icon <emoji> adds an icon type. \n/start to start the game. \n /endGame ends the current game and resets all the saved data. \n/move <direction> <distance> moves your character. Directions are \"left\",\"right\",\"up\", and \"down\". \n/attack <player> <damage> to attack a player if they are within range (4) dealing the specified damage. \n/deal <player> <amount> transfer a specified amount of money to an inrange (8) player.\n/defense <defense_amount> Give youself the specified amount of defense lasting only the current round.\map"
     await message.channel.send(msg)
 
   if message.content == "/rules":
-    msg = "To win, be the last to survive. You have three lives. Each round you get 5 mana. You can use mana to move, attack, or defend yourself. In addition, you can trade or gamble your mana."
+    msg = "To win, be the last to survive. You have three hearts. Lose all your hearts and you die. \nEach round you get 5 mana. You can use mana to move, attack, or defend yourself. \nIn addition, you can trade or gamble your mana. \nYou cannot move out of bounds or where another player currently is. Each coordinate you move takes up one mana. \n Each quantity of attack and defense uses up one mana as well. Defense is like temporary health that only lasts a round.\n Both attacking (4) and dealing (8) have a maximum target range."
     await message.channel.send(msg)
 
   if message.content == "/createGame":
@@ -78,7 +75,7 @@ async def on_message(message):
         msg = "You have already joined the game"
       else:
         db["users"].append(newPlayer)
-        db[newPlayer] = {"icon": newPlayer[0], 'id': db["game_values"]["player_count"], "health": 3, "defense": 0}
+        db[newPlayer] = {"icon": newPlayer[0], 'id': db["game_values"]["player_count"], "health": 3, "defense": 3, "mana": 25}
         db["game_values"]["player_count"] += 1
         msg = "{0} joined the game. Add a emoji for your user by typing /icon <emoji>".format(message.author)
     await message.channel.send(msg)
@@ -87,13 +84,13 @@ async def on_message(message):
     if (not db["game_values"]["created"]):
       msg = "Sorry, but you must create a game before checking the playerList."
     else:
-      msg = "Current Players (icon - playerName): \n"
+      msg = "Current Players: \n"
       if db["game_values"]["started"]:
         for player in db["users"].value:
-          msg += str(db[player]["icon"]) + " - " + player + " - " + str(db[player]["location"]) + " - " + str(db[player]["health"]) + " - " + str(db[player]["defense"]) + "\n"
+          msg += str(db[player]["icon"]) + "  " + player + "  Coords: " + str(db[player]["location"].value) + "  Health: " + str(db[player]["health"]) + "  Defense: " + str(db[player]["defense"]) + "  Mana: " + str(db[player]["mana"]) + "\n"
       else:
         for player in db["users"].value:
-          msg += str(db[player]["icon"]) + " - " + player + "\n"
+          msg += str(db[player]["icon"]) + "  " + player + "\n"
       
     await message.channel.send(msg)
 
@@ -136,7 +133,7 @@ async def on_message(message):
       # Visualize
       msg += "\n" + visualize()
       # Start First Round
-      print(len(msg))
+ 
     await message.channel.send(msg)
 
   if message.content == "/endGame":
@@ -159,7 +156,6 @@ async def on_message(message):
       db["game_values"] = {"created": False, "wantingToEndGame": False, "usersWantingToEndgame": []}
       msg = "Successfully ended the game"
 
-  #TODO: subtract mana for movement
   if message.content.startswith("/move"):
     msg_list = list(message.content.split(" "))
     # Check the arguments 
@@ -169,10 +165,12 @@ async def on_message(message):
     try:
       dist = int(msg_list[2])
       fail = False
+      if (dist < 0):
+        fail = True
+        msg = "Enter a positive integer you cheater"
     except:
       msg = "Enter an integer for the move distance"
       fail = True
-
 
     if (not db["game_values"]["created"]):
       msg = "Sorry, but you must create a game before doing this action."
@@ -180,6 +178,8 @@ async def on_message(message):
       msg = "Sorry, but you must start a game before doing this action."
     elif str(message.author) not in db["users"].value:
       msg = "Sorry, but you must have joined the game before it started to do this action."
+    elif dist > db[str(message.author)]["mana"]:
+        msg = "Not enough mana. You have " + str(db[str(message.author)]["mana"]) + " mana."
     elif not fail:
       # Update Player Location
       if msg_list[1] == "left":
@@ -194,7 +194,6 @@ async def on_message(message):
         msg = "invalid direction"
         await message.channel.send(msg)
         return
-      #TODO: CHECK IF OUT OF BOUNDS OR IF USED BY OTHER PLAYER
       coords = db[str(message.author)]["location"]
       newCoords = add(coords, direction)
       if newCoords[0] < 0 or newCoords[1] < 0 or newCoords[0] > rows - 1 or newCoords[1] > columns - 1:
@@ -202,15 +201,14 @@ async def on_message(message):
       elif str(newCoords[0]) + " " + str(newCoords[1]) in db["game_values"]["coord_player"]:
         msg = "Cannot move to where a player already exists"
       else:
+        db[str(message.author)]["mana"] -= dist
         del db["game_values"]["coord_player"][str(coords[0]) + " " + str(coords[1])]
         db["game_values"]["coord_player"][str(newCoords[0]) + " " + str(newCoords[1])] = str(message.author)
         db[str(message.author)]["location"] = newCoords
         # Visualize
         msg = visualize()
-      # 
     await message.channel.send(msg)
 
-  #TODO: subtract mana for movement
   if message.content.startswith("/attack"):
     msg_list = list(message.content.split(" "))
     # Check the arguments 
@@ -220,8 +218,11 @@ async def on_message(message):
     try:
       damage = int(msg_list[2])
       fail = False
+      if (damage < 0):
+        fail = True
+        msg = "Enter a positive integer you cheater"
     except:
-      msg = "Enter an integer for the move distance"
+      msg = "Enter an integer for the damage"
       fail = True
 
     if (not db["game_values"]["created"]):
@@ -233,11 +234,92 @@ async def on_message(message):
     elif msg_list[1] not in db["users"].value:
       msg = "Please enter a valid player name to attack. Type /playerList for all the available players"
     elif not fail:
-      db[msg_list[1]]["health"] -= damage
-      msg = "Attacked " + msg_list[1]
+      targetLoc = db[msg_list[1]]["location"].value
+      attackerLoc = db[str(message.author)]["location"].value
+      if attackRange < abs(attackerLoc[0] - targetLoc[0]) + abs(attackerLoc[1] - targetLoc[1]):
+        msg = "Not in range to attack. Attack Range is 4."
+      elif damage > db[str(message.author)]["mana"]:
+        msg = "Not enough mana. You have " + str(db[str(message.author)]["mana"]) + " mana."
+      else:
+        db[str(message.author)]["mana"] -= damage
+        remaining_damage = damage - db[msg_list[1]]["defense"]
+        remaining_defense = db[msg_list[1]]["defense"] - damage
+        if remaining_defense < 0:
+          db[msg_list[1]]["defense"] = 0
+          db[msg_list[1]]["health"] -= remaining_damage
+          # Check if target died
+        else:
+          db[msg_list[1]]["defense"] = remaining_defense
+        msg = "Attacked " + msg_list[1]
     await message.channel.send(msg)
 
+  if message.content.startswith("/deal"):
+    msg_list = list(message.content.split(" "))
+    # Check the arguments 
+    if len(msg_list) != 3:
+      msg = "bad command. Need two argument /deal <player> <amount>. user /playerList for list of players."
+      fail = True
+    try:
+      mana_amount = int(msg_list[2])
+      fail = False
+      if (mana_amount < 0):
+        fail = True
+        msg = "Enter a positive integer you cheater"
+    except:
+      msg = "Enter an integer for the transaction amount"
+      fail = True
 
+    if (not db["game_values"]["created"]):
+      msg = "Sorry, but you must create a game before doing this action."
+    elif (not db["game_values"]["started"]):
+      msg = "Sorry, but you must start a game before doing this action."
+    elif str(message.author) not in db["users"].value:
+      msg = "Sorry, but you must have joined the game before it started to do this action."
+    elif msg_list[1] not in db["users"].value:
+      msg = "Please enter a valid player name to attack. Type /playerList for all the available players"
+    elif not fail:
+      targetLoc = db[msg_list[1]]["location"].value
+      traderLoc = db[str(message.author)]["location"].value
+      if tradeRange < abs(traderLoc[0] - targetLoc[0]) + abs(traderLoc[1] - targetLoc[1]):
+        msg = "Not in range to make a deal. Deal Range is 8."
+      elif mana_amount > db[str(message.author)]["mana"]:
+        msg = "Not enough mana. You have " + str(db[str(message.author)]["mana"]) + " mana."
+      else:
+        db[str(message.author)]["mana"] -= mana_amount
+        db[msg_list[1]]["mana"] += mana_amount
+        msg = "Succesfully gave " + msg_list[1] + " " + str(mana_amount) + " mana."
+    await message.channel.send(msg)
+
+  if message.content.startswith("/defense"):
+    msg_list = list(message.content.split(" "))
+    # Check the arguments 
+    if len(msg_list) != 2:
+      msg = "bad command. Need two argument /defense <amount>."
+      fail = True
+    try:
+      defense_amount = int(msg_list[1])
+      fail = False
+      if (defense_amount < 0):
+        fail = True
+        msg = "Enter a positive integer you cheater"
+    except:
+      msg = "Enter an integer for the transaction amount"
+      fail = True
+
+    if (not db["game_values"]["created"]):
+      msg = "Sorry, but you must create a game before doing this action."
+    elif (not db["game_values"]["started"]):
+      msg = "Sorry, but you must start a game before doing this action."
+    elif str(message.author) not in db["users"].value:
+      msg = "Sorry, but you must have joined the game before it started to do this action."
+    elif not fail:
+      if defense_amount > db[str(message.author)]["mana"]:
+        msg = "Not enough mana. You have " + str(db[str(message.author)]["mana"]) + " mana."
+      else:
+        db[str(message.author)]["mana"] -= defense_amount
+        db[str(message.author)]["defense"] += defense_amount
+        msg = "Succesfully increased your defense to " + str(defense_amount) + "."
+    await message.channel.send(msg)
 
   if message.content == "/map":
     if (not db["game_values"]["created"]):
@@ -246,7 +328,7 @@ async def on_message(message):
       msg = "Sorry, but you must start a game before doing this action."
     else:
       msg = visualize()
-      await message.channel.send(msg)
+    await message.channel.send(msg)
 
   if message.content.startswith("/echo"):
     print(message.content)
