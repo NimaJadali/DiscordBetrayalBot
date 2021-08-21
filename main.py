@@ -123,12 +123,22 @@ async def on_message(message):
     return
 
   if message.content == "!help":
-    msg = "This is a game test. \nGameManagement Commands:\n!rules shows the game rules. \n!createGame instantiates a game. \n!join <Username> to join the game. \n!icon <emoji> adds an icon type. \n!start to start the game. \n !endGame ends the current game and resets all the saved data.\n\nInformation Commands:\n!playerList gets the list of all the players. \n!time shows the remaining time in the match. \n!pause to pause the round. \n!unpause to unpause the round. \n!map This shows the current layout. \n!range to get the range of all players. \n\n Gameplay Commands:\n!move <direction> <distance> moves your character. Directions are \"left\",\"right\",\"up\", and \"down\". \n!attack <player> <damage> to attack a player if they are within range (4) dealing the specified damage. \n!deal <player> <amount> transfer a specified amount of money to an inrange (8) player.\n!defend <defense_amount> Give youself the specified amount of defense lasting only the current round.\n!gamble <amount> to gamble the specified amount of mana. Be careful to only use positive integers.\n\n There are also might be hidden commands who knows"
+    msg = "This is a game test. \n!dmhelp\n!dmrules\n\nGameManagement Commands:\n!rules shows the game rules. \n!createGame instantiates a game. \n!join <Username> to join the game. \n!icon <emoji> adds an icon type. \n!start to start the game. \n !endGame ends the current game and resets all the saved data.\n\nInformation Commands:\n!playerList gets the list of all the players. \n!time shows the remaining time in the match. \n!pause to pause the round. \n!unpause to unpause the round. \n!map This shows the current layout. \n!range to get the range of all players. \n\n Gameplay Commands:\n!move <direction> <distance> moves your character. Directions are \"left\",\"right\",\"up\", and \"down\". \n!attack <player> <damage> to attack a player if they are within range (4) dealing the specified damage. \n!deal <player> <amount> transfer a specified amount of money to an inrange (8) player.\n!defend <defense_amount> Give youself the specified amount of defense lasting only the current round.\n!gamble <amount> to gamble the specified amount of mana. Be careful to only use positive integers.\n\n There are also might be hidden commands who knows"
     await message.channel.send(msg)
+
+  if message.content == "!dmhelp":
+    user = message.author
+    msg = "This is a game test. \n!dmhelp\n!dmrules\n\nGameManagement Commands:\n!rules shows the game rules. \n!createGame instantiates a game. \n!join <Username> to join the game. \n!icon <emoji> adds an icon type. \n!start to start the game. \n !endGame ends the current game and resets all the saved data.\n\nInformation Commands:\n!playerList gets the list of all the players. \n!time shows the remaining time in the match. \n!pause to pause the round. \n!unpause to unpause the round. \n!map This shows the current layout. \n!range to get the range of all players. \n\n Gameplay Commands:\n!move <direction> <distance> moves your character. Directions are \"left\",\"right\",\"up\", and \"down\". \n!attack <player> <damage> to attack a player if they are within range (4) dealing the specified damage. \n!deal <player> <amount> transfer a specified amount of money to an inrange (8) player.\n!defend <defense_amount> Give youself the specified amount of defense lasting only the current round.\n!gamble <amount> to gamble the specified amount of mana. Be careful to only use positive integers.\n\n There are also might be hidden commands who knows"
+    await user.send(msg)
 
   if message.content == "!rules":
     msg = "To win, be the last to survive. You have three hearts. Lose all your hearts and you die. \nEach round you get 5 mana. You can use mana to move, attack, or defend yourself. \nIn addition, you can trade or gamble your mana. \nYou cannot move out of bounds or where another player currently is. Each coordinate you move takes up one mana. \nEach quantity of attack and defense uses up one mana as well. Defense is like temporary health that halves each round after it is added.\nBoth attacking (4) and dealing (8) have a maximum target range.\nCurrently, each round lasts 1 minute."
     await message.channel.send(msg)
+
+  if message.content == "!dmrules":
+    user = message.author
+    msg = "To win, be the last to survive. You have three hearts. Lose all your hearts and you die. \nEach round you get 5 mana. You can use mana to move, attack, or defend yourself. \nIn addition, you can trade or gamble your mana. \nYou cannot move out of bounds or where another player currently is. Each coordinate you move takes up one mana. \nEach quantity of attack and defense uses up one mana as well. Defense is like temporary health that halves each round after it is added.\nBoth attacking (4) and dealing (8) have a maximum target range.\nCurrently, each round lasts 1 minute."
+    await user.send(msg)
 
   if message.content == "!createGame":
     db["game_values"]["started"] = False
@@ -385,7 +395,7 @@ async def on_message(message):
             await message.channel.send(msg)
             deadPlayer = user
             username = msg_list[1]
-            if len(db["deads"][deadPlayer] == 0):
+            if db["game_values"]["first_dead"] == "dead":
               db["game_values"]["first_dead"] = deadPlayer
               msg = "The first real death has occured. Hopefully the dead hold no grudges towards you. It would be a shame if you were cursed by the dead."
               await message.channel.send(msg)
